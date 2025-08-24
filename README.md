@@ -17,8 +17,8 @@ return {
     keys = {
       { "<leader>gkg", "<cmd>StgGoto<cr>", desc = "Go to patch" },
       { "<leader>gkr", "<cmd>StgRefresh<cr>", desc = "Refresh current patch" },
-      { "<leader>gka", "<cmd>StgApplyTo<cr>", desc = "Apply changes to patch" },
-      { "<leader>gku", "<cmd>StgUnstage<cr>", desc = "Unstage patch" },
+      { "<leader>gka", "<cmd>StgApplyTo<cr>", desc = "Apply current changes to another patch but stay on current patch" },
+      { "<leader>gku", "<cmd>StgUnstage<cr>", desc = "Move current patch to stage region" },
       { "<leader>gkc", "<cmd>StgResolve<cr>", desc = "Resolve conflicts" },
     },
     config = function()
@@ -35,8 +35,8 @@ return {
 
 - `:StgGoto [patch_name]` - Navigate to a specific patch (opens selection UI if no patch specified)
 - `:StgRefresh` - Refresh the current patch
-- `:StgApplyTo [patch_name]` - Apply current changes to another patch
-- `:StgUnstage [patch_name]` - Unstage a patch
+- `:StgApplyTo [patch_name]` - Apply current changes to another patch but stay on current patch
+- `:StgUnstage` - Move current patch to stage region
 - `:StgResolve` - Resolve (refresh) conflicts
 
 ## Requirements
