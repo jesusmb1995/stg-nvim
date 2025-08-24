@@ -25,3 +25,7 @@ function stg-resolve {
 	stg refresh
 }
 
+# Quick new patch with default message
+function stg-new {
+  stg new "${1}" -m "${1}"
+}

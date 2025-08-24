@@ -303,6 +303,47 @@ local function stg_branch_clone(branch_name)
   })
 end
 
+-- Function to create a new patch
+local function stg_new_patch(patch_name)
+  if not patch_name or patch_name == "" then
+    -- Get current patches and generate suggestion
+    local patches = get_stg_patches()
+    local patch_count = #patches
+    local suggested_name = string.format("patch%d", patch_count + 1)
+    
+    -- Use vim.ui.input to get user input with default value
+    vim.ui.input({
+      prompt = "Enter new patch name: ",
+      default = suggested_name,
+    }, function(input)
+      if input and input ~= "" then
+        stg_new_patch(input)
+      end
+    end)
+    return
+  end
+
+  local stg_cmd = get_stg_command()
+  if not stg_cmd then
+    vim.notify("stg command not found", vim.log.levels.ERROR)
+    return
+  end
+
+  local script_path = get_stg_aliases_path()
+  local cmd = string.format("export PATH=\"$(dirname '%s'):$PATH\" && source %s && stg-new %s", stg_cmd, vim.fn.shellescape(script_path), vim.fn.shellescape(patch_name))
+
+  vim.fn.jobstart(cmd, {
+    shell = true,
+    on_exit = function(_, code)
+      if code == 0 then
+        vim.notify(string.format("Successfully created new patch: %s", patch_name), vim.log.levels.INFO)
+      else
+        vim.notify(string.format("Failed to create new patch: %s", patch_name), vim.log.levels.ERROR)
+      end
+    end
+  })
+end
+
 -- Function to show current series with position indicator
 local function stg_series_show()
   local stg_cmd = get_stg_command()
@@ -469,6 +510,12 @@ function M.setup(user_config)
     stg_series_show()
   end, {
     nargs = 0,
+  })
+
+  vim.api.nvim_create_user_command("StgNew", function(opts)
+    stg_new_patch(opts.args)
+  end, {
+    nargs = "?", -- Optional argument
   })
 end
 

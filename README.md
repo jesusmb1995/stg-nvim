@@ -13,8 +13,9 @@ return {
   {
     url = "https://github.com/jesusmb1995/stg-nvim",
     lazy = true,
-    cmd = { "StgSeries", "StgGoto", "StgRefresh", "StgStagedApplyTo", "StgApplyTo", "StgSpill", "StgResolve", "StgBranchClone" },
+    cmd = { "StgNew", "StgSeries", "StgGoto", "StgRefresh", "StgStagedApplyTo", "StgApplyTo", "StgSpill", "StgResolve", "StgBranchClone" },
     keys = {
+      { "<leader>gkn", "<cmd>StgNew<cr>", desc = "Create new patch" },
       { "<leader>gks", "<cmd>StgSeries<cr>", desc = "Show patches" },
       { "<leader>gkg", "<cmd>StgGoto<cr>", desc = "Go to patch" },
       { "<leader>gkr", "<cmd>StgRefresh<cr>", desc = "Refresh current patch" },
@@ -27,7 +28,7 @@ return {
     config = function()
       require('stg-nvim').setup({
         -- Optional: specify stg path
-        stg_path = "/home/linuxbrew/.linuxbrew/bin/stg" 
+        stg_path = "/home/linuxbrew/.linuxbrew/bin/stg"
       })
     end
   }
@@ -43,6 +44,7 @@ return {
 - `:StgUnstage` - Move current patch to stage region
 - `:StgResolve` - Resolve (refresh) conflicts
 - `:StgBranchClone [branch_name]` - Clone current branch (prompts for name if not specified)
+- `:StgNew [patch_name]` - Create a new patch (prompts for name if not specified)
 
 ## Requirements
 
