@@ -149,10 +149,10 @@ local function stg_refresh()
 end
 
 -- Function to apply current changes to another patch
-local function stg_apply_to(patch_name)
+local function _stg_apply_to(patch_name, command)
   if not patch_name or patch_name == "" then
     select_patch("Select patch to apply changes to:", function(choice)
-      stg_apply_to(choice)
+      _stg_apply_to(choice, command)
     end)
     return
   end
@@ -164,8 +164,7 @@ local function stg_apply_to(patch_name)
   end
 
   local script_path = get_stg_aliases_path()
-  local cmd = string.format("export PATH=\"$(dirname '%s'):$PATH\" && source %s && stg-apply-to %s", stg_cmd, vim.fn.shellescape(script_path),
-    vim.fn.shellescape(patch_name))
+  local cmd = string.format("export PATH=\"$(dirname '%s'):$PATH\" && source %s && %s %s", stg_cmd, vim.fn.shellescape(script_path), command, vim.fn.shellescape(patch_name))
 
   vim.fn.jobstart(cmd, {
     shell = true,
@@ -173,14 +172,22 @@ local function stg_apply_to(patch_name)
       if code == 0 then
         vim.notify(string.format("Successfully applied changes to patch: %s", patch_name), vim.log.levels.INFO)
       else
-        vim.notify(string.format("Failed to apply changes to patch: %s", patch_name), vim.log.levels.ERROR)
+        vim.notify(string.format("Failed to apply changes to patch: %s. Command: %s. Output: %s", patch_name, cmd, vim.fn.system(cmd)), vim.log.levels.ERROR)
       end
     end
   })
 end
 
--- Function to unstage current patch
-local function stg_unstage()
+local function stg_apply_to(patch_name)
+  _stg_apply_to(patch_name, "stg-apply-to")
+end
+
+local function stg_staged_apply_to(patch_name)
+  _stg_apply_to(patch_name, "stg-apply-staged-to")
+end
+
+-- Function to spill current patch
+local function stg_spill()
   local script_path = get_stg_aliases_path()
   local stg_cmd = get_stg_command()
   if not stg_cmd then
@@ -188,15 +195,15 @@ local function stg_unstage()
     return
   end
 
-  local cmd = string.format("export PATH=\"$(dirname '%s'):$PATH\" && source %s && stg-unstage", stg_cmd, vim.fn.shellescape(script_path))
+  local cmd = string.format("export PATH=\"$(dirname '%s'):$PATH\" && source %s && stg-spill", stg_cmd, vim.fn.shellescape(script_path))
 
   vim.fn.jobstart(cmd, {
     shell = true,
     on_exit = function(_, code)
       if code == 0 then
-        vim.notify("Successfully unstaged current patch", vim.log.levels.INFO)
+        vim.notify("Successfully spilled current patch", vim.log.levels.INFO)
       else
-        vim.notify(string.format("Failed to unstage current patch. Output: %s", vim.fn.system(cmd)), vim.log.levels.ERROR)
+        vim.notify(string.format("Failed to spill current patch. Output: %s", vim.fn.system(cmd)), vim.log.levels.ERROR)
       end
     end
   })
@@ -232,7 +239,6 @@ function M.setup(user_config)
     config = vim.tbl_deep_extend("force", config, user_config)
   end
 
-  -- :stgGoto command
   vim.api.nvim_create_user_command("StgGoto", function(opts)
     stg_goto(opts.args)
   end, {
@@ -242,14 +248,21 @@ function M.setup(user_config)
     end,
   })
 
-  -- :stgRefresh command
   vim.api.nvim_create_user_command("StgRefresh", function()
     stg_refresh()
   end, {
     nargs = 0,
   })
 
-  -- :stgApplyTo command
+  vim.api.nvim_create_user_command("StgStagedApplyTo", function(opts)
+    stg_staged_apply_to(opts.args)
+  end, {
+    nargs = "?", -- Optional argument
+    complete = function(_, _, _)
+      return get_stg_patches()
+    end,
+  })
+
   vim.api.nvim_create_user_command("StgApplyTo", function(opts)
     stg_apply_to(opts.args)
   end, {
@@ -259,14 +272,12 @@ function M.setup(user_config)
     end,
   })
 
-  -- :stgUnstage command
-  vim.api.nvim_create_user_command("StgUnstage", function()
-    stg_unstage()
+  vim.api.nvim_create_user_command("StgSpill", function()
+    stg_spill()
   end, {
     nargs = 0,
   })
 
-  -- :stgResolve command
   vim.api.nvim_create_user_command("StgResolve", function()
     stg_resolve()
   end, {

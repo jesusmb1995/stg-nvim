@@ -6,8 +6,14 @@ function stg-apply-to {
 	git stash && stg goto "${1}" && git stash pop && stg refresh && stg goto "${_current}"
 }
 
-# Delete patch but keep local changes
-function stg-unstage {
+# Apply staged modifications to another patch and return to current patch 
+function stg-apply-staged-to {
+	_current=$(stg series | grep '>' | awk '{print $NF}')
+	git stash --staged && stg goto "${1}" && git stash pop && stg refresh && stg goto "${_current}"
+}
+
+# Empty patch but keep local changes
+function stg-spill {
 	_current=$(stg series | grep '>' | awk '{print $NF}')
   _current_msg="$(stg show ${_current} | tail -n +5)"
   stg delete --spill "${_current}" && stg new "${_current}" -m "${_current_msg}"
