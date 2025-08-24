@@ -13,14 +13,15 @@ return {
   {
     url = "https://github.com/jesusmb1995/stg-nvim",
     lazy = true,
-    cmd = { "StgGoto", "StgRefresh", "StgStagedApplyTo", "StgApplyTo", "StgSpill", "StgResolve" },
+    cmd = { "StgGoto", "StgRefresh", "StgStagedApplyTo", "StgApplyTo", "StgSpill", "StgResolve", "StgBranchClone" },
     keys = {
       { "<leader>gkg", "<cmd>StgGoto<cr>", desc = "Go to patch" },
       { "<leader>gkr", "<cmd>StgRefresh<cr>", desc = "Refresh current patch" },
       { "<leader>gka", "<cmd>StgStagedApplyTo<cr>", desc = "Apply current staged changes to another patch but stay on current patch" },
       { "<leader>gkA", "<cmd>StgApplyTo<cr>", desc = "Apply current changes to another patch but stay on current patch" },
       { "<leader>gku", "<cmd>StgSpill<cr>", desc = "Empty current patch but keep changes locally" },
-      { "<leader>gkc", "<cmd>StgResolve<cr>", desc = "Resolve conflicts" },
+      { "<leader>gkc", "<cmd>StgBranchClone<cr>", desc = "Clone current branch" },
+      { "<leader>gkC", "<cmd>StgResolve<cr>", desc = "Resolve conflicts" },
     },
     config = function()
       require('stg-nvim').setup({
@@ -39,6 +40,7 @@ return {
 - `:Stg(Staged)ApplyTo [patch_name]` - Apply current changes to another patch but stay on current patch
 - `:StgUnstage` - Move current patch to stage region
 - `:StgResolve` - Resolve (refresh) conflicts
+- `:StgBranchClone [branch_name]` - Clone current branch (prompts for name if not specified)
 
 ## Requirements
 

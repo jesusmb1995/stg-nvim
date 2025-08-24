@@ -36,6 +36,34 @@ local function get_stg_command()
   return nil
 end
 
+-- Helper function to get current branch name
+local function get_current_branch()
+  local result = vim.fn.system("git branch --show-current")
+  local exit_code = vim.v.shell_error
+
+  if exit_code ~= 0 then
+    vim.notify("Failed to get current branch name", vim.log.levels.ERROR)
+    return nil
+  end
+
+  return result:gsub("%s+$", "") -- Remove trailing whitespace
+end
+
+-- Helper function to generate suggested branch name
+local function generate_branch_name(base_name)
+  -- Check if base_name already ends with a number
+  local name, number = base_name:match("(.*[a-zA-Z_%-])(%d+)")
+  
+  if name and number then
+    -- Base name ends with a number, increment it
+    local next_number = tonumber(number) + 1
+    return name .. tostring(next_number)
+  else
+    -- Base name doesn't end with a number, add 2
+    return base_name .. "2"
+  end
+end
+
 -- Helper function to get stg series patches
 local function get_stg_patches()
   local stg_cmd = get_stg_command()
@@ -232,6 +260,49 @@ local function stg_resolve()
   })
 end
 
+-- Function to clone current branch
+local function stg_branch_clone(branch_name)
+  if not branch_name or branch_name == "" then
+    -- Get current branch name and generate suggestion
+    local current_branch = get_current_branch()
+    if not current_branch then
+      return
+    end
+    
+    local suggested_name = generate_branch_name(current_branch)
+    
+    -- Use vim.ui.input to get user input with default value
+    vim.ui.input({
+      prompt = "Enter new branch name: ",
+      default = suggested_name,
+    }, function(input)
+      if input and input ~= "" then
+        stg_branch_clone(input)
+      end
+    end)
+    return
+  end
+
+  local stg_cmd = get_stg_command()
+  if not stg_cmd then
+    vim.notify("stg command not found", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = string.format("%s branch --clone %s", stg_cmd, vim.fn.shellescape(branch_name))
+  
+  vim.fn.jobstart(cmd, {
+    shell = true,
+    on_exit = function(_, code)
+      if code == 0 then
+        vim.notify(string.format("Successfully cloned branch to: %s", branch_name), vim.log.levels.INFO)
+      else
+        vim.notify(string.format("Failed to clone branch to: %s", branch_name), vim.log.levels.ERROR)
+      end
+    end
+  })
+end
+
 -- Setup function to define the stg commands
 function M.setup(user_config)
   -- Merge user configuration with defaults
@@ -282,6 +353,12 @@ function M.setup(user_config)
     stg_resolve()
   end, {
     nargs = 0,
+  })
+
+  vim.api.nvim_create_user_command("StgBranchClone", function(opts)
+    stg_branch_clone(opts.args)
+  end, {
+    nargs = "?", -- Optional argument
   })
 end
 
