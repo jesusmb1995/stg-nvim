@@ -1,6 +1,6 @@
 # stg-nvim
 
-Some stacked git commands for neovim.
+Some stacked git (stg) commands for neovim. See https://stacked-git.github.io/
 
 ## Installation
 
