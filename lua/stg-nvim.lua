@@ -344,6 +344,38 @@ local function stg_new_patch(patch_name)
   })
 end
 
+-- Function to edit current patch
+local function stg_edit()
+  local stg_cmd = get_stg_command()
+  if not stg_cmd then
+    vim.notify("stg command not found", vim.log.levels.ERROR)
+    return
+  end
+ 
+  -- Open the buffer in a split window and create terminal
+  vim.api.nvim_command("split")
+  vim.api.nvim_command(string.format("terminal GIT_EDITOR='vim' %s edit", stg_cmd))
+   
+  -- Enter terminal mode
+  vim.api.nvim_command("startinsert")
+end
+
+-- Function to start interactive rebase
+local function stg_rebase()
+  local stg_cmd = get_stg_command()
+  if not stg_cmd then
+    vim.notify("stg command not found", vim.log.levels.ERROR)
+    return
+  end
+  
+  -- Open the buffer in a split window and create terminal
+  vim.api.nvim_command("split")
+  vim.api.nvim_command(string.format("terminal GIT_EDITOR='vim' %s rebase -i", stg_cmd))
+
+  -- Enter terminal mode
+  vim.api.nvim_command("startinsert")
+end
+
 -- Function to show current series with position indicator
 local function stg_series_show()
   local stg_cmd = get_stg_command()
@@ -516,6 +548,18 @@ function M.setup(user_config)
     stg_new_patch(opts.args)
   end, {
     nargs = "?", -- Optional argument
+  })
+
+  vim.api.nvim_create_user_command("StgEdit", function()
+    stg_edit()
+  end, {
+    nargs = 0,
+  })
+
+  vim.api.nvim_create_user_command("StgRebase", function()
+    stg_rebase()
+  end, {
+    nargs = 0,
   })
 end
 
