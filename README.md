@@ -13,8 +13,9 @@ return {
   {
     url = "https://github.com/jesusmb1995/stg-nvim",
     lazy = true,
-    cmd = { "StgGoto", "StgRefresh", "StgStagedApplyTo", "StgApplyTo", "StgSpill", "StgResolve", "StgBranchClone" },
+    cmd = { "StgSeries", "StgGoto", "StgRefresh", "StgStagedApplyTo", "StgApplyTo", "StgSpill", "StgResolve", "StgBranchClone" },
     keys = {
+      { "<leader>gks", "<cmd>StgSeries<cr>", desc = "Show patches" },
       { "<leader>gkg", "<cmd>StgGoto<cr>", desc = "Go to patch" },
       { "<leader>gkr", "<cmd>StgRefresh<cr>", desc = "Refresh current patch" },
       { "<leader>gka", "<cmd>StgStagedApplyTo<cr>", desc = "Apply current staged changes to another patch but stay on current patch" },
@@ -35,6 +36,7 @@ return {
 
 ## Available Commands
 
+- `:StgSeries` - Show the current patch series in a floating window
 - `:StgGoto [patch_name]` - Navigate to a specific patch (opens selection UI if no patch specified)
 - `:StgRefresh` - Refresh the current patch
 - `:Stg(Staged)ApplyTo [patch_name]` - Apply current changes to another patch but stay on current patch

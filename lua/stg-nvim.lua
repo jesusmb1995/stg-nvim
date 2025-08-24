@@ -303,6 +303,110 @@ local function stg_branch_clone(branch_name)
   })
 end
 
+-- Function to show current series with position indicator
+local function stg_series_show()
+  local stg_cmd = get_stg_command()
+  if not stg_cmd then
+    vim.notify("stg command not found", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = stg_cmd .. " series"
+  local result = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code ~= 0 then
+    local error_msg = string.format("Failed to get stg series (exit code: %d)", exit_code)
+    if result and result ~= "" then
+      error_msg = error_msg .. string.format("\nCommand output: %s", result)
+    end
+    vim.notify(error_msg, vim.log.levels.ERROR)
+    return
+  end
+
+  -- Split the result into lines and filter out empty lines
+  local lines = {}
+  for line in result:gmatch("[^\r\n]+") do
+    if line:match("%S") then -- Only add non-empty lines
+      -- Extract patch name (remove any markers like >, +, -)
+      local patch_name = line:gsub("^%s*[+>-]%s*", ""):gsub("%s+$", "")
+      
+      -- Get commit hash for this patch
+      local hash_cmd = string.format("%s show --stat %s", stg_cmd, vim.fn.shellescape(patch_name))
+      local hash_result = vim.fn.system(hash_cmd)
+      local hash = ""
+      
+      if vim.v.shell_error == 0 then
+        -- Extract commit hash from the first line (format: commit <hash>)
+        local commit_line = hash_result:match("[^\r\n]+")
+        if commit_line then
+          local extracted_hash = commit_line:match("commit%s+([a-f0-9]+)")
+          if extracted_hash then
+            hash = extracted_hash:sub(1, 8) -- Show first 8 characters
+          end
+        end
+      end
+      
+      -- Add hash and patch name
+      if hash ~= "" then
+        table.insert(lines, hash .. " " .. line)
+      else
+        table.insert(lines, line)
+      end
+    end
+  end
+
+  -- Create a floating window to display the series
+  local width = 60
+  local height = math.min(#lines + 2, 20)
+  
+  -- Calculate window position (center of screen)
+  local win_width = vim.api.nvim_win_get_width(0)
+  local win_height = vim.api.nvim_win_get_height(0)
+  local col = math.floor((win_width - width) / 2)
+  local row = math.floor((win_height - height) / 2)
+
+  -- Create buffer
+  local buf = vim.api.nvim_create_buf(false, true)
+  
+  -- Set buffer content
+  local header = "StG Series"
+  local separator = string.rep("─", width)
+  local content = {header, separator}
+  
+  for _, line in ipairs(lines) do
+    table.insert(content, line)
+  end
+  
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, content)
+  
+  -- Set buffer options
+  vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+  vim.api.nvim_buf_set_option(buf, 'buftype', 'nofile')
+  vim.api.nvim_buf_set_option(buf, 'filetype', 'stg-series')
+  
+  -- Create window
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = 'editor',
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    style = 'minimal',
+    border = 'rounded'
+  })
+  
+  -- Set window options
+  vim.api.nvim_win_set_option(win, 'wrap', false)
+  vim.api.nvim_win_set_option(win, 'cursorline', false)
+  
+  -- Add keymaps to close window
+  local opts = { buffer = buf, noremap = true, silent = true }
+  vim.keymap.set('n', 'q', '<cmd>close<CR>', opts)
+  vim.keymap.set('n', '<Esc>', '<cmd>close<CR>', opts)
+  vim.keymap.set('n', '<CR>', '<cmd>close<CR>', opts)
+end
+
 -- Setup function to define the stg commands
 function M.setup(user_config)
   -- Merge user configuration with defaults
@@ -359,6 +463,12 @@ function M.setup(user_config)
     stg_branch_clone(opts.args)
   end, {
     nargs = "?", -- Optional argument
+  })
+
+  vim.api.nvim_create_user_command("StgSeries", function()
+    stg_series_show()
+  end, {
+    nargs = 0,
   })
 end
 
