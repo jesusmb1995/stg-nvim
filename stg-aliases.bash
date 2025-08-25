@@ -9,7 +9,7 @@ function stg-apply-to {
 # Apply staged modifications to another patch and return to current patch 
 function stg-apply-staged-to {
 	_current=$(stg series | grep '>' | awk '{print $NF}')
-	git stash --staged && stg goto "${1}" && git stash pop && stg refresh && stg goto "${_current}"
+	git stash --staged && git stash && stg goto "${1}" && git stash apply stash@{1} && git stash drop stash@{1} && stg refresh && stg goto "${_current}" && git stash pop
 }
 
 # Empty patch but keep local changes
