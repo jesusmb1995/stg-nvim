@@ -9,7 +9,39 @@ function stg-apply-to {
 # Apply staged modifications to another patch and return to current patch 
 function stg-apply-staged-to {
 	_current=$(stg series | grep '>' | awk '{print $NF}')
-	git stash --staged && git stash && stg goto "${1}" && git stash apply stash@{1} && git stash drop stash@{1} && stg refresh && stg goto "${_current}" && git stash pop
+	echo "Stashing changes at $(pwd)"
+	if ! git stash --staged; then
+		echo "Failed to stash staged changes"
+		return 1
+	fi
+	if ! git stash; then
+		echo "Failed to stash unstaged changes"
+		return 1
+	fi
+	if ! stg goto "${1}"; then
+		echo "Failed to goto patch ${1}"
+		return 1
+	fi
+	if ! git stash apply stash@{1}; then
+		echo "Failed to apply staged changes"
+		return 1
+	fi
+	if ! git stash drop stash@{1}; then
+		echo "Failed to drop staged stash"
+		return 1
+	fi
+	if ! stg refresh; then
+		echo "Failed to refresh patch"
+		return 1
+	fi
+	if ! stg goto "${_current}"; then
+		echo "Failed to return to patch ${_current}"
+		return 1
+	fi
+	if ! git stash pop; then
+		echo "Failed to pop stashed changes"
+		return 1
+	fi
 }
 
 # Empty patch but keep local changes
