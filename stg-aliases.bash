@@ -53,7 +53,7 @@ function stg-spill {
 
 # Add and refesh all conflicts
 function stg-resolve {
-	git status --short | grep '^UU' | awk '{print $2}' | xargs git add
+	git status --short | grep -E '^(UU|AA|AU|UA)' | awk '{print $2}' | xargs git add
 	stg refresh
 }
 
