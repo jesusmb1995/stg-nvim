@@ -64,8 +64,8 @@ local function generate_branch_name(base_name)
   end
 end
 
--- Helper function to get stg series patches
-local function get_stg_patches()
+-- Helper function to get stg series patches with status
+local function get_stg_patches_with_status()
   local stg_cmd = get_stg_command()
   if not stg_cmd then
     vim.notify("stg command not found in any of the expected locations", vim.log.levels.ERROR)
@@ -88,15 +88,81 @@ local function get_stg_patches()
 
   local patches = {}
   for line in result:gmatch("[^\r\n]+") do
-    local patch_name = line:match("^%s*[+>-]?%s*([^%s]+)")
+    -- Extract status indicator and patch name
+    local status, patch_name = line:match("^%s*([+>-]?)%s*([^%s]+)")
     if patch_name and patch_name ~= "" then
-      table.insert(patches, patch_name)
+      table.insert(patches, {
+        name = patch_name,
+        status = status or "",
+        display = line:gsub("^%s+", ""):gsub("%s+$", "") -- Keep original formatting
+      })
     end
   end
   return patches
 end
 
--- Helper function to show selection UI using vim.ui.select
+-- Helper function to get stg series patches (backward compatibility)
+local function get_stg_patches()
+  local patches_with_status = get_stg_patches_with_status()
+  local patches = {}
+  for _, patch in ipairs(patches_with_status) do
+    table.insert(patches, patch.name)
+  end
+  return patches
+end
+
+-- Helper function to show enhanced selection UI with numbers and search
+local function select_patch_enhanced(title, callback)
+  local patches_with_status = get_stg_patches_with_status()
+  if #patches_with_status == 0 then
+    vim.notify("No patches found in stg series", vim.log.levels.WARN)
+    return
+  end
+
+  -- Create display items with numbers
+  local display_items = {}
+  for i, patch in ipairs(patches_with_status) do
+    local number_str = string.format("%2d", i)
+    local display_text = string.format("[%s] %s", number_str, patch.display)
+    table.insert(display_items, {
+      index = i,
+      patch = patch,
+      display = display_text
+    })
+  end
+
+  vim.ui.select(display_items, {
+    prompt = title .. " (type to search, numbers to select): ",
+    format_item = function(item)
+      return item.display
+    end,
+    finder = function(prompt, items, callback)
+      -- If prompt is a number, filter by index
+      local num = tonumber(prompt)
+      if num and num >= 1 and num <= #items then
+        callback({items[num]})
+        return
+      end
+      
+      -- Otherwise, filter by search text
+      local filtered = {}
+      local search_lower = prompt:lower()
+      for _, item in ipairs(items) do
+        if item.patch.name:lower():find(search_lower, 1, true) or
+           item.patch.display:lower():find(search_lower, 1, true) then
+          table.insert(filtered, item)
+        end
+      end
+      callback(filtered)
+    end,
+  }, function(choice)
+    if choice then
+      callback(choice.patch.name)
+    end
+  end)
+end
+
+-- Helper function to show selection UI using vim.ui.select (backward compatibility)
 local function select_patch(title, callback)
   local patches = get_stg_patches()
   if #patches == 0 then
@@ -131,7 +197,7 @@ end
 -- Function to jump to a specific patch
 local function stg_goto(patch_name)
   if not patch_name or patch_name == "" then
-    select_patch("Select patch to goto:", function(choice)
+    select_patch_enhanced("Select patch to goto:", function(choice)
       stg_goto(choice)
     end)
     return
@@ -179,7 +245,7 @@ end
 -- Function to apply current changes to another patch
 local function _stg_apply_to(patch_name, command)
   if not patch_name or patch_name == "" then
-    select_patch("Select patch to apply changes to:", function(choice)
+    select_patch_enhanced("Select patch to apply changes to:", function(choice)
       _stg_apply_to(choice, command)
     end)
     return
