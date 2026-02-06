@@ -230,13 +230,23 @@ local function stg_refresh()
     return
   end
 
-  vim.fn.jobstart(stg_cmd .. " refresh --index", {
+  vim.fn.jobstart(stg_cmd .. " refresh", {
     shell = true,
     on_exit = function(_, code)
       if code == 0 then
         vim.notify("Successfully refreshed current patch", vim.log.levels.INFO)
       else
-        vim.notify("Failed to refresh current patch", vim.log.levels.ERROR)
+        -- If the initial refresh fails, try again with "--index"
+        vim.fn.jobstart(stg_cmd .. " refresh --index", {
+          shell = true,
+          on_exit = function(_, code2)
+            if code2 == 0 then
+              vim.notify("Successfully refreshed current patch with --index", vim.log.levels.INFO)
+            else
+              vim.notify("Failed to refresh current patch (with and without --index)", vim.log.levels.ERROR)
+            end
+          end
+        })
       end
     end
   })
