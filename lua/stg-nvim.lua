@@ -230,7 +230,7 @@ local function stg_refresh()
     return
   end
 
-  vim.fn.jobstart(stg_cmd .. " refresh", {
+  vim.fn.jobstart(stg_cmd .. " refresh --index", {
     shell = true,
     on_exit = function(_, code)
       if code == 0 then
