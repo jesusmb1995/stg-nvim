@@ -62,10 +62,20 @@ function stg-new {
   stg new "${1}" -m "${1}"
 }
 
-# Create new patch with staged changes after current patch and return
+# Create new patch with staged changes after specified patch (or current) and return
+# Usage: stg-staged-new-after <new_patch_name> [<after_patch_name>]
 function stg-staged-new-after {
-	_current=$(stg series | grep '>' | awk '{print $NF}')
-	echo "Creating new patch with staged changes after ${_current}"
+	local new_patch="${1}"
+	local after_patch="${2}"
+	local _current=$(stg series | grep '>' | awk '{print $NF}')
+
+	# Default to current patch if not specified
+	if [[ -z "${after_patch}" ]]; then
+		after_patch="${_current}"
+	fi
+
+	echo "Creating new patch '${new_patch}' with staged changes after '${after_patch}'"
+
 	if ! git stash --staged; then
 		echo "Failed to stash staged changes"
 		return 1
@@ -75,15 +85,21 @@ function stg-staged-new-after {
 		git stash pop stash@{1} 2>/dev/null || true
 		return 1
 	fi
-	if ! stg new "${1}" -m "${1}"; then
-		echo "Failed to create new patch ${1}"
+	if ! stg goto "${after_patch}"; then
+		echo "Failed to goto patch ${after_patch}"
+		git stash pop stash@{0} 2>/dev/null || true
+		git stash drop stash@{1} 2>/dev/null || true
+		return 1
+	fi
+	if ! stg new "${new_patch}" -m "${new_patch}"; then
+		echo "Failed to create new patch ${new_patch}"
 		git stash pop stash@{0} 2>/dev/null || true
 		git stash drop stash@{1} 2>/dev/null || true
 		return 1
 	fi
 	if ! git stash apply stash@{1}; then
 		echo "Failed to apply staged changes to new patch"
-		stg delete --spill "${1}" 2>/dev/null || true
+		stg delete --spill "${new_patch}" 2>/dev/null || true
 		git stash pop stash@{0} 2>/dev/null || true
 		git stash drop stash@{1} 2>/dev/null || true
 		return 1
@@ -104,5 +120,5 @@ function stg-staged-new-after {
 		echo "Failed to restore unstaged changes"
 		return 1
 	fi
-	echo "Successfully created new patch '${1}' with staged changes after '${_current}'"
+	echo "Successfully created new patch '${new_patch}' with staged changes after '${after_patch}'"
 }

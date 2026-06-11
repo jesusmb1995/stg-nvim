@@ -290,45 +290,64 @@ local function stg_staged_apply_to(patch_name)
   _stg_apply_to(patch_name, "stg-apply-staged-to")
 end
 
--- Function to create new patch with staged changes after current patch
-local function stg_staged_new_after(patch_name)
-  if not patch_name or patch_name == "" then
-    -- Get current patches and generate suggestion
-    local patches = get_stg_patches()
-    local patch_count = #patches
-    local suggested_name = string.format("patch%d", patch_count + 1)
-
-    -- Use vim.ui.input to get user input with default value
-    vim.ui.input({
-      prompt = "Enter new patch name: ",
-      default = suggested_name,
-    }, function(input)
-      if input and input ~= "" then
-        stg_staged_new_after(input)
-      end
-    end)
-    return
-  end
-
-  local stg_cmd = get_stg_command()
-  if not stg_cmd then
-    vim.notify("stg command not found", vim.log.levels.ERROR)
-    return
-  end
-
-  local script_path = get_stg_aliases_path()
-  local cmd = string.format("export PATH=\"$(dirname '%s'):$PATH\" && source %s && stg-staged-new-after %s", stg_cmd, vim.fn.shellescape(script_path), vim.fn.shellescape(patch_name))
-
-  vim.fn.jobstart(cmd, {
-    shell = true,
-    on_exit = function(_, code)
-      if code == 0 then
-        vim.notify(string.format("Successfully created new patch '%s' with staged changes", patch_name), vim.log.levels.INFO)
-      else
-        vim.notify(string.format("Failed to create new patch '%s' with staged changes", patch_name), vim.log.levels.ERROR)
-      end
+-- Function to create new patch with staged changes after selected patch
+-- Usage: StgStagedNewAfter [<patch_name>] [<after_patch>]
+-- If no arguments provided, shows dropdown to select "after" patch, then prompts for new patch name
+-- If only patch_name provided, prompts for "after" patch
+-- If both provided, executes directly
+local function stg_staged_new_after(patch_name, after_patch)
+  -- Both arguments provided - execute directly
+  if patch_name and patch_name ~= "" and after_patch and after_patch ~= "" then
+    local stg_cmd = get_stg_command()
+    if not stg_cmd then
+      vim.notify("stg command not found", vim.log.levels.ERROR)
+      return
     end
-  })
+
+    local script_path = get_stg_aliases_path()
+    local cmd = string.format("export PATH=\"$(dirname '%s'):$PATH\" && source %s && stg-staged-new-after %s %s",
+      stg_cmd, vim.fn.shellescape(script_path), vim.fn.shellescape(patch_name), vim.fn.shellescape(after_patch))
+
+    vim.fn.jobstart(cmd, {
+      shell = true,
+      on_exit = function(_, code)
+        if code == 0 then
+          vim.notify(string.format("Successfully created new patch '%s' with staged changes after '%s'", patch_name, after_patch), vim.log.levels.INFO)
+        else
+          vim.notify(string.format("Failed to create new patch '%s' with staged changes after '%s'", patch_name, after_patch), vim.log.levels.ERROR)
+        end
+      end
+    })
+    return
+  end
+
+  -- Need to select which patch to insert after
+  select_patch_enhanced("Select patch to insert after:", function(selected_after_patch)
+    if not selected_after_patch then
+      return
+    end
+
+    -- Now get the new patch name
+    if not patch_name or patch_name == "" then
+      -- Get current patches and generate suggestion
+      local patches = get_stg_patches()
+      local patch_count = #patches
+      local suggested_name = string.format("patch%d", patch_count + 1)
+
+      -- Use vim.ui.input to get user input with default value
+      vim.ui.input({
+        prompt = "Enter new patch name: ",
+        default = suggested_name,
+      }, function(input)
+        if input and input ~= "" then
+          stg_staged_new_after(input, selected_after_patch)
+        end
+      end)
+    else
+      -- patch_name was provided via args, after_patch was selected
+      stg_staged_new_after(patch_name, selected_after_patch)
+    end
+  end)
 end
 
 -- Function to spill current patch
@@ -629,9 +648,15 @@ function M.setup(user_config)
   })
 
   vim.api.nvim_create_user_command("StgStagedNewAfter", function(opts)
-    stg_staged_new_after(opts.args)
+    local args = vim.split(opts.args, " ", { plain = true, trimempty = true })
+    local patch_name = args[1] or ""
+    local after_patch = args[2] or ""
+    stg_staged_new_after(patch_name, after_patch)
   end, {
-    nargs = "?", -- Optional argument
+    nargs = "*", -- Accept any number of arguments
+    complete = function(_, _, _)
+      return get_stg_patches()
+    end,
   })
 
   vim.api.nvim_create_user_command("StgApplyTo", function(opts)
