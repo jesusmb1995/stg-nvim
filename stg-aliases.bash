@@ -61,3 +61,48 @@ function stg-resolve {
 function stg-new {
   stg new "${1}" -m "${1}"
 }
+
+# Create new patch with staged changes after current patch and return
+function stg-staged-new-after {
+	_current=$(stg series | grep '>' | awk '{print $NF}')
+	echo "Creating new patch with staged changes after ${_current}"
+	if ! git stash --staged; then
+		echo "Failed to stash staged changes"
+		return 1
+	fi
+	if ! git stash; then
+		echo "Failed to stash unstaged changes"
+		git stash pop stash@{1} 2>/dev/null || true
+		return 1
+	fi
+	if ! stg new "${1}" -m "${1}"; then
+		echo "Failed to create new patch ${1}"
+		git stash pop stash@{0} 2>/dev/null || true
+		git stash drop stash@{1} 2>/dev/null || true
+		return 1
+	fi
+	if ! git stash apply stash@{1}; then
+		echo "Failed to apply staged changes to new patch"
+		stg delete --spill "${1}" 2>/dev/null || true
+		git stash pop stash@{0} 2>/dev/null || true
+		git stash drop stash@{1} 2>/dev/null || true
+		return 1
+	fi
+	if ! git stash drop stash@{1}; then
+		echo "Failed to drop staged stash"
+		return 1
+	fi
+	if ! stg refresh; then
+		echo "Failed to refresh new patch with staged changes"
+		return 1
+	fi
+	if ! stg goto "${_current}"; then
+		echo "Failed to return to patch ${_current}"
+		return 1
+	fi
+	if ! git stash pop; then
+		echo "Failed to restore unstaged changes"
+		return 1
+	fi
+	echo "Successfully created new patch '${1}' with staged changes after '${_current}'"
+}
